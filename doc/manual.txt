@@ -1,0 +1,1167 @@
+                                    Henkari
+
+  Tero Tilus
+
+   Distance-learning designer
+   Jyva:skyla: open university
+
+   $Date: 2002/11/12 12:40:33 $
+
+   Dynamic extensible website framework in object-oriented php.
+
+     ----------------------------------------------------------------------
+
+   Table of Contents
+
+   1. Introduction
+
+                1.1. Henkari?
+
+                1.2. Motivation
+
+                1.3. Purpose
+
+                1.4. Terminology
+
+                1.5. Features
+
+   2. Structure
+
+                2.1. Files and directories
+
+                2.2. How does it work (by example)
+
+   3. Setting up henkari
+
+                3.1. Requirements
+
+                3.2. Installation
+
+                3.3. Configuration
+
+   4. Building website with henkari
+
+                4.1. Getting started
+
+                4.2. Template system
+
+                4.3. Handlers
+
+                4.4. Automatic template variables
+
+                4.5. Includes
+
+                4.6. Builtin server side cache
+
+   5. Extending
+
+                5.1. User defined handlers
+
+                5.2. Your PHP scripts in henkari
+
+                5.3. Interfaces
+
+   A. Appendices
+
+                A.1. License agreement
+
+                                1. Introduction
+
+1.1. Henkari?
+
+   Henkari is a dynamic extensible server-side website framework with oo-php.
+   Word "henkari" is finnish. It translates as "hanger". Henkari helps you to
+   keep your website nicely in shape a bit like hanger keeps your jacket.
+
+     ----------------------------------------------------------------------
+
+1.2. Motivation
+
+   Doing manually something which computer is (when properly tuned up) fully
+   capable of doing by itself is merely stupid. Maintaining even a simple
+   website on flat-file basis without any html generation tools may include
+   loads of that stupid hacking. Things like changing site layout, adding and
+   removing pages and updating toc and navigation links.
+
+     ----------------------------------------------------------------------
+
+1.3. Purpose
+
+   Henkari is a server-side website framework. It's purpose is minimize
+   excess work of website maintainer. It provides template hierarchy, dynamic
+   TOC/path/menu, (optional) online editing (security depends on webserver
+   setup), extensibility and configurability.
+
+   Example: Adding a new page to your site includes creating it with your
+   favorite html editor and saving it to your web folder. That's all. TOC
+   gets (and also many other things get) updated automagically.
+
+     ----------------------------------------------------------------------
+
+1.4. Terminology
+
+   Handler. A module providing some (additional) functionality to henkari. To
+   be accurate, handler is a class inherited from abstractHandler.
+
+   TOC. Table of contents -like (not necessarily the table of contents)
+   dynamically folding tree of navigational choises.
+
+   Menu. Single step navigational choises on current context. Currently
+   contains all entries on TOC "up" and "down" from viewed entry. Horizontal
+   ("next" and "prev") are to be implemented.
+
+   Path. Several meanings. In navigational context path is the path from
+   mainpage to current page.
+
+   Entrypoint. is the root address/directory of the webspace handled by
+   henkari. It's the directory where your index.php (so called entrypoint
+   script) or link to it, config.php and lib/ / phplib/ directories (or links
+   to them) reside.
+
+   Henkari webroot. Henkari's root directory for website content. May be
+   referred as "webroot" in this document. Default is root/ under entrypoint.
+
+   Henkari webtree. Directory tree under henkari webroot. May be referred as
+   "webtree" in this document.
+
+     ----------------------------------------------------------------------
+
+1.5. Features
+
+   Templates. Henkari uses phplib to implement template functionality to ease
+   the separation of content and look/feel. Templates are well-formed (x)html
+   files and you can create and modify them with your favorite html editor.
+   Templates apply to the directory where they reside (and all the
+   subdirectories) and can be nested. Nesting is performed by using only body
+   of the template that is to be nested within the current template. To lear
+   more see Section 4.2.
+
+   Dynamic navigation. From file/directory structure and user defined
+   exceptions Henkari automatically generates navigational elements:
+   dynamically folding table of contents, menu and path.
+
+   Distributed configuration. You can alter just about everything per
+   directory(tree) basis. If you know Apache's .htaccess configuration files,
+   you are already familiar with the consept. There are two separate (both
+   are optional) configuration files. First (.index and _index, both are
+   read) contains additional TOC entry definitions and second (.henkari and
+   _henkari, both are used) is evaluated as php-code. See Section 3.3 to
+   learn more.
+
+     ----------------------------------------------------------------------
+
+                                  2. Structure
+
+2.1. Files and directories
+
+   Directory listing from root directory of henkari shows the following.
+
+   bash$ cd /dir/where/you/extracted/henkari                                  
+   bash$ ls -la                                                               
+   drwxr-sr-x    7 terotil  users        4096 Jul  1 13:08 .                  
+   drwsr-sr-x    8 terotil  users        4096 Jun 25 13:39 ..                 
+   -rw-r--r--    1 terotil  users       17983 Jul  1 11:10 COPYING            
+   drwxr-sr-x    5 terotil  users        4096 Jul  1 14:07 doc                
+   -rw-r--r--    1 terotil  users          85 Jun 24 18:53 example.htaccess   
+   -rw-r--r--    1 terotil  users        1378 Jul 30 15:29 index.php          
+   drwxr-sr-x    3 terotil  users        4096 Jul  1 11:41 lib                
+   drwxr-sr-x    5 terotil  users        4096 Jun 25 11:05 root               
+   -rw-r--r--    1 terotil  users         952 Jul  1 13:08 TODO               
+   bash$                                                                      
+
+   COPYING contains license and TODO describes the road ahead. Documentation
+   is found from doc/, program code from lib/ and website from root/.
+   index.php is entrypoint script to Henkari. example.htaccess contains an
+   example of Apache (mod_rewrite) configuration to hide index.php from url.
+   There may be something else too, but you need to know only these.
+
+     ----------------------------------------------------------------------
+
+2.2. How does it work (by example)
+
+   Henkari works recursively starting from it's root web-directory (default
+   is root/ under entrypoint) and ending to requested file/directory. On each
+   step forward along the request path (when there's still path left) a
+   decision is made: Who handles the the next step? Configuration files
+   placed on directories that are examined during a single request can have
+   effect on the result. For example they can change the rules which provide
+   answer to the previously presented question.
+
+   Let's have an example. Assume Henkari's entrypoint script index.php in
+   /entry/point/dir/ which is seen as http://www.somesite.net/somepath/ by J.
+   Random Surfer. Now in default Henkari configuration the website is located
+   in /entry/point/dir/root/. Assume we have there a configfile
+   /entry/point/dir/root/.henkari
+
+    <?php                                                                     
+                                                                              
+    // Get singleton instance of handlerFactory.                              
+    $hf =& handlerFactory::getInstance();                                     
+                                                                              
+    // Register a handler for html-files.                                     
+    $hf->registerHandler('text/html', 'htmlHandler');                         
+                                                                              
+    ?>                                                                        
+
+   a template /entry/point/dir/root/_template.html
+
+    <html>                                                                    
+      <head><title>{title}</title></head>                                     
+      <body>                                                                  
+        <div style="width: 65em">                                             
+    {content}                                                                 
+        </div>                                                                
+      </body>                                                                 
+    </html>                                                                   
+
+   and a webpage /entry/point/dir/root/random/page.html
+
+    <html><head><title>Footitle</title></head>                                
+    <body>                                                                    
+      <p>This is a foopage.</p>                                               
+    </body></html>                                                            
+
+   Now when request is made to retrieve the assumed page, url looks (without
+   any server-side tricks) like this:
+   http://www.somesite.net/somepath/index.php/random/page.html. This causes
+   webserver to execute entrypoint script
+   http://www.somesite.net/somepath/index.php, which (when caching is on)
+   checks if the page has been requested before and saved to page cache. If
+   it's not, it parses remaining path /random/page.html to array ("random",
+   "page.html"). Then it asks handlerFactory to return a proper handler for
+   /entry/point/dir/root/, gives the previously parsed array to the returned
+   handler and calls it's handle() -function.
+
+   Handlers share common interface and are instantiated by handlerFactory. It
+   decides which handler gets instantiated for which file. The decision is
+   made upon file's type (is it a directory, symlink, regular file, etc.) and
+   name.
+
+   Because /entry/point/dir/root/ is a directory handlerFactory instantiates
+   a dirHandler. First dirHandler searches "current directory"
+   (/entry/point/dir/root/) for configuration files and template.
+   Configuration file .henkari (See Section 3.3.3) is found and evaluated as
+   php-code. It tells handlerFactory which handlers to use with files of
+   certain mimetype. Template (/entry/point/dir/root/_template.html) is found
+   too and user interface (an instance of UI) is ordered to use the newly
+   found template. Then handler searches current directory for entries not
+   beginning with dot or underscore and not ending with tilde and adds them
+   to TOC. In this case there's only directory random/ (See Section 3.3.2).
+   Next thing dirHandler does is to check if there still is path left to
+   travel. It pops "random" from the left end of ("random", "page.html") and
+   thus reduces the array to ("page.html"). Then it appends popped "random"
+   to "current directory" resulting /entry/point/dir/root/random/, asks
+   handlerFactory a handler for it and passes control to returned handler
+   along with remaining path ("page.html").
+
+   /entry/point/dir/root/random/ is directory too, so handlerFactory
+   instantiated and returned dirHandler and the same procedure starts again.
+   Configuration files and template are searched, but not found. Directory is
+   listed and page.html is added to TOC as child of random/. Then handler
+   pops "page.html" from path, appends it to "current directory" resulting
+   /entry/point/dir/root/random/page.html. Handler gives it to
+   handlerFactory, requests a new handler and passes control to it.
+
+   File /entry/point/dir/root/random/page.html is recognized by Henkari to be
+   of type "text/html". Evaluation of configuration file
+   /entry/point/dir/root/.henkari registered htmlHandler to be responsible of
+   mimetype "text/html". So handlerFactory instantiates htmlHandler and
+   control is passed to it. Handler reads
+   /entry/point/dir/root/random/page.html, extracts the contents of <title>
+   and <body> and tells the UI to append them to page title and page content.
+
+   Handler recursion ends to htmlHandler and control passes back to
+   entrypoint script, which commands UI to send page. UI uses data passed to
+   it to render page.
+
+    <html>                                                                    
+      <head><title>Footitle</title></head>                                    
+      <body>                                                                  
+        <div style="width: 65em">                                             
+                                                                              
+      <p>This is a foopage.</p>                                               
+                                                                              
+        </div>                                                                
+      </body>                                                                 
+    </html>                                                                   
+
+   Then (if no handler opted out caching) it saves the result with optional
+   http-headers to page cache, sends it to browser of J. Random Surfer and
+   exits.
+
+     ----------------------------------------------------------------------
+
+                             3. Setting up henkari
+
+3.1. Requirements
+
+   In theory where ever you can make PHP4 or better to work henkari will
+   follow. Properly setting up an entrypoint that is separate from the place
+   where henkari itself is located requires filesystem with symbolic links
+   (or equivalent feature), but it's not required.
+
+   In Debian environment you need packages php4 and phplib. Phplib program
+   files appear in /usr/lib/phplib and when creating an entrypoint (see
+   Section 3.2.4) you can link them from there.
+
+     ----------------------------------------------------------------------
+
+3.2. Installation
+
+  3.2.1. Obtain
+
+   Henkari can be obtained from http://www.math.jyu.fi/~terotil/
+
+     ----------------------------------------------------------------------
+
+  3.2.2. Extract
+
+   Extract the distribution package on a place where you keep your local
+   program files.
+
+   It's recommended that when really using henkari, you don't put files under
+   any web directory but create entrypoint separately (Section 3.2.4) and
+   that way can share henkari program files between several websites and make
+   updating henkari easier. For testing purposes it's perfectly OK to extract
+   files under web directory and use the directory where henkari resides as
+   an entrypoint.
+
+   If you have GNU tar, extracting goes with command.
+
+   bash$ tar --extract --ungzip --file=henkari.tar.gz                         
+
+     ----------------------------------------------------------------------
+
+  3.2.3. PHPLib
+
+   Note Currently henkari distribution includes program files from            
+        phplib-7.4-pre1. If you already have phplib on your machine, you can  
+        during entrypoint creation link you existing phplib instead of        
+        phplib-7.4-pre1 which came with henkari distribution.                 
+
+   Henkari uses functionality from phplib. So if you don't already have it
+   and it didn't come with henkari distribution, obtain it from
+   http://sourceforge.net/projects/phplib/, extract package and copy
+   directory containing library files (php/) to your shared php-code
+   location. Henkari should work with any phplib from 7.x on.
+
+   Henkari assumes phplib library files reside in phplib/ when looking from
+   the directory where entrypoint script is. Quick way is to symlink phplib
+   library directory to entrypoint directory.
+
+   bash$ cd /dir/where/entrypoint/script/is                                   
+   bash$ ln -s /shared/php/code/phplib-code-dir/ phplib                       
+
+     ----------------------------------------------------------------------
+
+  3.2.4. Create entrypoint
+
+   If you use the directory where henkari actually resides as and entrypoint
+   too, you don't have to do anything special. Extracted henkari directory
+   serves as an entrypoint right out-of-box. Creating entrypoint this way can
+   make updating and local an error-prone task. It's OK for testing purposes,
+   but creating separate entrypoint is recommended.
+
+   Creating separate entrypoint starts with creating (web)directory that will
+   serve the entrypoint. Copy config.php to that directory. Create (symbolic)
+   links to doc/, lib/, phplib/ directories and index.php. Create root/ and
+   pagecache/ directories (or which ever are approppriate for you. These can
+   be changed from configuration). Now you should have working entrypoint.
+
+   Good smoke test is to put whatever (html-)file to root/ directory and
+   point your browser to entrypoint directory. You should see a link pointing
+   to that file and clicking should show that file. Assume my webroot is
+   /var/www/ and I have henkari entrypoint at /var/www/henkari/. Now I would
+   copy my whatever.html to /var/www/henkari/root/, point my browser to
+   http://myhost/henkari/ and see (if henkari is working) a page with single
+   link "Whatever" pointing to http://myhost/henkari/index.php/whatever.html.
+
+     ----------------------------------------------------------------------
+
+3.3. Configuration
+
+   Henkari's configuration has three levels. General settings have global
+   defaults, which are located in lib/henkariConfig.class.php. General
+   settings for each entrypoint reside in config.php in the entrypoint
+   directory in question. Third level is distributed configuration under
+   webroot.
+
+     ----------------------------------------------------------------------
+
+  3.3.1. General settings
+
+   General settings apply to single entrypoint. File containing those
+   settings is config.php and it's located in the entrypoint directory.
+   Example configuration coming with henkari distribution contains only few
+   settings to give an example of the syntax. You can find the rest of the
+   configuration variables from lib/henkariConfig.class.php where their
+   global defaults are set. Setting variable in config.php overrides the
+   global default.
+
+     ----------------------------------------------------------------------
+
+  3.3.2. .index
+
+   Dotindex-file contains all the exceptions to the rules (see Section 4.4.1)
+   along which automatic navigational elements are built. If found, both
+   .index and _index are used.
+
+   Syntax of dotindex looks like this.
+
+   # Comment                                                                  
+   map    somefile    Label of some file                                      
+   map    somedir/    Label of some dir                                       
+   pseudo nonexisting Another label                                           
+   hide   filenottoshow                                                       
+
+   Lines beginning with hash are ignored (Note that hash must be the first
+   character.). All the other lines are split on two first sequences of
+   whitespace (sequence of only spaces and tabs). First part is interpreted
+   as command and the rest (one or two) are parameters. Three commands (see
+   the syntax example abow) are recognized.
+
+   map
+
+           Maps file/directory to a new name. This new name is used in
+           automatic navigational elements to represent the file/directory in
+           question. First parameter is the name of the file/directory and
+           the second is the name to use for that file/directory. Note that
+           you must append a trailing slash to directory names.
+
+   pseudo
+
+           Adds an entry to automatic navigational elements. First parameter
+           is the address used in links and the second is the name to use for
+           that entry.
+
+   hide
+
+           Hides matching files/directories from navigational elements. A
+           file/directory is not shown if a match against any hide-pattern is
+           found from it's name. Hide-patterns apply to the directory where
+           they appear and all subdirectories. Patterns are POSIX extended
+           regular expressions (see The Open Group Base Specifications Issue
+           6, Chapter 9
+           http://www.opengroup.org/onlinepubs/007904975/basedefs/xbd_chap09.html).
+
+           Note that this only hides files from automatic navigational
+           elements. It doesn't prevent user from requesting them. You can
+           still link to these hidden items, but automatic table of contents
+           (see Section 4.4.1) may behave unexpectedly.
+
+   As you may have noticed, only the second parameter may contain
+   whitespaces. So mapping names having whitespaces is currently impossible.
+   Take this into account in your naming conventions.
+
+     ----------------------------------------------------------------------
+
+  3.3.3. .henkari
+
+   Dothenkari is executed as php-code before the directory where it resides
+   is examined. It must be a well formed php-file. If found, both .henkari
+   and _henkari are used. Dothenkari gives you direct access to internals of
+   henkari in the middle of it's road towards requested file. You can
+   redefine pretty much everything.
+
+   A straightforward way to implement two alternate templates and parameter
+   driven switching between them is to put following code in .henkari in
+   webroot.
+
+   if ( 'print' == CGI::safeLookupGP('tpl', 'screen') ) {                     
+     global $config;                                                          
+     $config->templatefile = '_template_print.html';                          
+   }                                                                          
+
+   If now in get or post variables there is variable 'tpl' having value
+   'print'. Configuration is altered so that _template_print.html is used as
+   template instead of default _template.html. Now you only need the
+   templates and links between them.
+
+   [                                                                          
+   <a href="{this_uri}?tpl=screen">normal</a> |                               
+   <a href="{this_uri}?tpl=print">printable</a>                               
+   ]                                                                          
+
+   To lear more about the possibilities available in dothenkari you should
+   read Section 5.
+
+     ----------------------------------------------------------------------
+
+                        4. Building website with henkari
+
+4.1. Getting started
+
+   With it's default file handler Section 4.3.2 henkari does pretty much
+   nothing different when comparing to an ordinary webserver. Usually the
+   first thing to do is to register handlers for the filetypes you want
+   henkari to be aware of. Builtin html-handler (see Section 4.3.3) with
+   default directory and file handlers should be enough for small and
+   moderate websites. You can register html handler by creating to your root
+   directory a dothenkari (file named .henkari or _henkari) with the
+   following content.
+
+    <?php                                                                     
+    $hf =& handlerFactory::getInstance();                                     
+    $hf->registerHandler('text/html', 'htmlHandler');                         
+    ?>                                                                        
+
+   Now when you have html handler enabled on your website html files behave
+   intelligetly with templates and you can start building your website.
+
+     ----------------------------------------------------------------------
+
+4.2. Template system
+
+   Henkari uses templates from phplib. Phplib templates are ordinary html
+   files with some "magical" markings. Words within curly braces are
+   {markers} that are to be replaced with some content that is spesific to
+   viewed page. These markers are called template variables.
+
+   Henkari automatically provides content for number of template variables
+   (see Section 4.4). With those template variables known by henkari you can
+   describe how your template should be used. i.e. Where to put page content,
+   last modification time, table of contents, etc. The most important
+   template variable is {content} which is replaced with the content of page.
+   You should always have it in every template you create.
+
+   Name of the template file is _template.html and you may (but you are not
+   required to) have one in each directory in your henkari webtree. First
+   template encountered is used as master template. If another template is
+   found when walking further along request path, it's nested in master
+   template (if not explisitly set otherwise, see Section 3.3.2).
+
+   Master template is used directly, no modifications are done. In nesting
+   operation master template's {content} -variable is replaced with the
+   content of nested template's <body> tag.
+
+   References in templates must be written so that they don't break when
+   pages in different directories are wrapped in the same template. Assume we
+   have in webroot a stylesheet file style.css, template having
+
+   <link rel="stylesheet" type="text/css" href="style.css">                   
+
+   and also two pages, one in webroot and another in a directory under
+   webroot. When the first page in webroot is requested everyting works fine,
+   but on the second page stylesheet is not found because it's looked from
+   the directory where the page is in. So we must use absolute address for
+   stylesheet. At this point henkari helps us a little. There's a template
+   variable {entrypoint_uri} which is automatically replaced with an address
+   to henkari webroot. So we can write
+
+   <link rel="stylesheet" type="text/css" href="{entrypoint_uri}style.css">   
+
+     ----------------------------------------------------------------------
+
+4.3. Handlers
+
+   Henkari has a subsystem called "handler factory". It's given a filename
+   and it decides which handler should that file be given to. Handlers
+   provide the actual functionality. Handlers that you want to use, must be
+   properly registered to handler factory. Henkari comes with a number of
+   predefined handlers, but only default directory handler (see Section
+   4.3.1) and default file handler (see Section 4.3.2) are used unless you
+   register more.
+
+   Next sections describe the handlers coming with henkari distribution.
+
+     ----------------------------------------------------------------------
+
+  4.3.1. Directories (dirHandler)
+
+   This is the default directory handler. It's used when filename given to
+   handler factory points to a directory. In the real world it means that
+   dirHandler is used until recursion reaches the requested file (if there is
+   one) or another directory handler is registered. Assume we have site
+   http://www.somesite.net/somepath/, entrypoint directory /entry/point/dir/
+   and request http://www.somesite.net/somepath/index.php/some/file.html
+   coming in. Now /entry/point/dir/root/ and /entry/point/dir/root/some/ are
+   given to dirHandler and /entry/point/dir/root/some/file.html by default to
+   As-is file handler.
+
+   dirHandler is responsible of the most of henkari core functionality:
+   Executing per-directory special file dothenkari (see Section 3.3.3),
+   setting per-directory templates (see Section 4.2), interpreting
+   per-directory special file dotindex (see Section 3.3.2), creating table of
+   contents, menu and path (see Section 4.4.1)
+
+     ----------------------------------------------------------------------
+
+  4.3.2. Files "as-is" (asisHandler)
+
+   This is the default file handler. It's used when filename given to handler
+   factory points to an ordinary file and no other handlers are registered to
+   be responsible of handling that file. This handler just sets Content-type:
+   http header to reflect the MIME-type of the file and sends the content of
+   that file, which is pretty much what would (efectively) happen without
+   henkari.
+
+   If you for example want to have a download-link and direct browsing (as
+   described in Section 4.3.5) link to a gzip package, "intelliget" behavior
+   of henkari is not desired. As-is file handler can be forced by giving a
+   http get parameter asis value yes. (Append ?asis=yes to download url)
+
+     ----------------------------------------------------------------------
+
+  4.3.3. Html files (htmlHandler)
+
+   This handler makes henkari behave more intelligently with html files. When
+   handled by htmlHandler, html files are embedded to page template (see
+   Section 4.2), content of html file's <body> tag is appended to page
+   content (which gets at it's turn to replace {content} template variable),
+   content of html file's <title> tag is appended to page title and so on.
+
+     ----------------------------------------------------------------------
+
+  4.3.4. Php scripts (phpHandler)
+
+   This handler executes (with include()) a php script, buffers it's output
+   and appends the output to page content. There are no special requirements
+   to php scripts executed with phpHandler. There are a few minor limitations
+   though. Script is not executed in global namespace as a plain php script
+   without henkari would but in phpHandler::handle(). Remember to explisitely
+   introduce global variables as global. If you want to bypass the template
+   system you have to use UI::responseData and UI::addHeader() (see Section
+   5.3) to make your response work and have it correctly cached. I could look
+   like this.
+
+   <?php                                                                      
+   // Get user interface                                                      
+   $ui =& UI::getInstance();                                                  
+                                                                              
+   // Set response content type                                               
+   $ui->addHeader('Content-type: application/x-shockwave-flash');             
+                                                                              
+   // Set response data                                                       
+   $swf_data = create_some_nifty_flash();                                     
+   $ui->responseData = $swf_data;                                             
+   ?>                                                                         
+
+   Simple rule for generating your own response from within henkari means
+   first retrieving instance of UI and replacing "header()" with
+   "UI::addHeader()" and "echo" with "UI::responseData .=".
+
+     ----------------------------------------------------------------------
+
+  4.3.5. Packages (tarHandler, gzipHandler)
+
+   These two handlers make tar and gzip -packages behave exactly like
+   directories. If a tar or gzip -package is requested, handler extracts the
+   package to a temporary directory and recurses into it pretty much as
+   directory handler would.
+
+     ----------------------------------------------------------------------
+
+  4.3.6. Ejsc scripts (ejscHandler)
+
+   This is an example of more advanced handler. It glues together a powerfull
+   online geometric construction tool and a script compiler resulting
+   remarkable ease of construction authoring. To learn more about these tools
+   visit (JavaSketchpad homepage and read about Extended JavaSketchpad
+   Construction Compiler from it's manual.
+
+   ejscHandler compiles requested script with ejscc and appends the result to
+   template variable "construction". "Local" template scriptfile.ejsc.html is
+   used if found and builtin default template otherwise. If script has
+   preprocessor directives of the form
+
+    #define DEFAULT_variablename variablevalue                                
+
+   Now template variable "variablename" is set to "variablevalue" if not
+   overriden by http get or post -parameter which takes precendance. Default
+   template has variables "string_name" (page title), "appletheight",
+   "appletwidth", "codebase" (applet codebase, set default in config.php) and
+   "construction" (place for JSP construction).
+
+   If you want to set, say page title form script, you put the following line
+   in ejsc script file.
+
+    #define DEFAULT_string_name MyTitle                                       
+
+   You can change it's template behaviour with ejsc_template -parameter. It
+   has the following possible values.
+
+   local
+
+           Local template (scriptfile.ejsc.html) is used (if found, otherwise
+           default) and template is nested.
+
+   default
+
+           Default template is used and it's nested.
+
+   plain_local
+
+           As local but template is set root (no previously set templates are
+           used).
+
+   plain_default
+
+           As default but template is set root.
+
+     ----------------------------------------------------------------------
+
+  4.3.7. Statement lists (statementlistHandler)
+
+   Simple way to set up true-false quiz. [FIXME: Complete this...]
+
+     ----------------------------------------------------------------------
+
+4.4. Automatic template variables
+
+   Template variables (those strings in curly braces) get replaced by
+   associated value if the data containing the variable is handled by
+   template system. Package handlers and asisHandler don't use template
+   system to produce their output (package handlers don't provide any output
+   and asisHandler serves the plain file as it is).
+
+   Next chapters provide a brief but comprehensive description on the
+   template variables that have automagical content.
+
+     ----------------------------------------------------------------------
+
+  4.4.1. Navigational elements
+
+   A separate "label mapper" is responsible of mapping filenames to viewed
+   names. If dirHandler encounters a map or pseudo command in dotindex
+   configuration file it adds a corresponding name mapping rule to label
+   mapper. Default mapping is to remove file extension and leading number (if
+   not configured otherwise), replace underscores with spaces and capitalize
+   first letter. A few examples:
+
+    a_file.txt --> A file                                                     
+    03_directory --> Directory                                                
+    fancy_name_with_date_1.1.2000.html --> Fancy name with date 1.1.2000      
+
+   All these automatic navigational elements use those mapped names for files
+   and directories.
+
+   You can change the way these automatical elements render. Look for the
+   available configuration items from lib/henkariConfig.php.
+
+   {TOC}
+
+           Table of contents reflects the underlying filesystem structure
+           with exceptions described in dotindex -files (see Section 3.3.2).
+           It folds automatically to form a minimal tree still having all the
+           children of requested item visible.
+
+   {menu}
+
+           Menu contains parent and all the children of requested item. You
+           can hide parent item from menu. Just put "hide \.\." in your
+           dotindex.
+
+   {path}
+
+           Path contains (as it's name suggests) the path from main page up
+           to and including the viewed page. All path items are links which
+           point to correspondig pages.
+
+     ----------------------------------------------------------------------
+
+  4.4.2. Other automatic template variables
+
+   {entrypoint_uri}
+
+           Is replaced (a bit counter-intuitively) with an absolute path to
+           root directory of this entrypoint. Assume you have henkari in
+           henkari/ with no special tricks (url rewrite, etc.) under your
+           personal webspace which is visible on
+           http://www.myhost.com/~myself/ and mystyles.css in your
+           henkari/root/css/ and you want to link it from you template with
+           an absolute address so that it works in on every page. You can
+           write {entrypoint_uri}/css/mystyles.css and henkari resolves it to
+           /~myself/henkari/index.php/css/mystyles.css.
+
+   {this_uri}
+
+           Is replaced with an absolute path (see {entrypoint_uri}) to
+           requested file.
+
+   {base_uri}
+
+           Is replaced with an absolute path (see {entrypoint_uri}) to the
+           directory where requested file/directory resides.
+
+   {title}
+
+           Page title is placed here. Title is put together from pieces
+           separated by $config->title->separator and pieces are taken from
+           titles of nested templates in the order they appear (and from
+           requested html file if htmlHandler was registered).
+
+   {content}
+
+           Page content is placed here.
+
+   {date_modified}
+
+           Is replaced with the last modification time of requested
+           file/directory (if it exists). You can set date format in
+           configuration.
+
+     ----------------------------------------------------------------------
+
+4.5. Includes
+
+   There's a special form of template variable (wich isn't actually handled
+   with template system, but it behaves the same way) called include.Includes
+   look like this.
+
+    {#include random_file.html}                                               
+    {#include /random/location/random_file.html}                              
+    {#include http://randomhost/awesomereport.html}                           
+
+   Only whitespace allowed is the single space before filename. Two first
+   examples are local files and the last one is a webpage. Local paths are
+   taken relative to entrypoint directory. Content of the included file is
+   assumed to be (x)html. <body> tag is searched and if it's found only its
+   contents are used. Otherwise the whole file is included.
+
+   If you have fopen wrappers enabled on your php you can use ftp-paths and
+   specify host port. If fopen wrappers are not availabe henkari uses builtin
+   web retrieve which only supports http and port 80.
+
+   Note that only htmlHandler has this feature enabled. Includes work only in
+   files handled by htmlHandler unless you define your own handler which uses
+   this feature (see Section 5).
+
+     ----------------------------------------------------------------------
+
+4.6. Builtin server side cache
+
+   Every query is mapped to $config->cachefile in $config->cachedir (which
+   you can set in config.php. If cachefile is found (and cache is on, i.e.
+   $config->cache = true, default is off) the file (along with its headers)
+   is sent to browser and no handlers are created.
+
+   If you change website content and want the pages be refreshed you have to
+   empty cache directory. If you only have changed single page you only have
+   to delete cache files of that particular page. Name of cachefile is of the
+   form
+
+    henkaricache[requestpath].[crc]                                           
+
+   Where [requestpath] is the requested path slashes (/) replaced with hashes
+   (#) and [crc] is crc32 polynomial of serialized http parameters. So if you
+   changed root/info/news.html you only have to issue the following command
+   in cache directory
+
+   bash$ rm -f henkaricache#info#news.html.*                                  
+
+   Cache is turned on from configuration where also the cachedir is set (as
+   previously described). If you want to use cache (why not!) make sure that
+   $config->cachedir exists and is writable by php. Note that sometimes
+   server-side scripts (as php) are run with their owner/creator's account
+   and sometimes with webserver's account. Find out wich one applies to your
+   host and change cachedir's permissions to allow php-scripts to write
+   there.
+
+     ----------------------------------------------------------------------
+
+                                  5. Extending
+
+   To extend henkari features you need at least basic programming skills and
+   knowledge of php programming language (see http://www.php.net/).
+
+   Henkari is extended by creating your own php scripts which take advantage
+   of henkari environment. Another more advanced way is to create and
+   register your own handler(s) to be responsible of your own special files.
+
+     ----------------------------------------------------------------------
+
+5.1. User defined handlers
+
+   Possibilities with handlers are next to infinite. You could for example
+   have handler for files containing SQL, which would connect database,
+   execute query and render the result to html table. More advanced one would
+   be general image handler, which would verify that the type of requested
+   image is found from Accept-Encoding header and if not, would try to
+   convert requested image to one of the accepted types if possible.
+
+   User defined handler is a correct solution when you have multitude of
+   files that must be somehow prepared for viewing. Need for special behavior
+   in a single point on your website is easier to satisfy by simple
+   php-script.
+
+   Creating your own handler starts (after you have decided that you really
+   need it and this is the correct answer to problem in hand) with deciding
+   where to put the physical file(s). If your handlers are strictly
+   entrypoint spesific, you can create a directory for them under your
+   entrypoint, for example lib_local/. If your handler could be used more
+   widely consider making it GPL, (eventually) placing it in your lib/ and
+   informing henkari author. Next is to devise a name. Naming convention for
+   handlers is fooHandler where foo is the name of the thing this handler is
+   intended to deal with. This will be the name of your handler class. Name
+   the file containing the class fooHandler.class.php.
+
+   You define a handler by inheriting from abstractHandler and overriding
+   handle(). The following is the classic done properly as henkari handler.
+
+   <?php                                                                      
+   class helloHandler extends abstractHandler {                               
+     function handle() {                                                      
+       $ui =& UI::getInstance();                                              
+       $hello = 'Hello World!';                                               
+       $ui-<pageTitle($hello);                                                
+       $ui-<appendToPage($hello);                                             
+     }                                                                        
+   }                                                                          
+   ?>                                                                         
+
+   This is of course pretty braindead handler, because it doesn't do anything
+   with the file it was commanded to handle.
+
+   Your newly defined handler is put into action by registering it to be
+   responsible of files of certain type. Let's given an example of it by
+   putting our new handler to handle *.hello files. This is accomplished by
+   registering a file type and a handler for it in dothenkari. Assume that
+   guidelines given for placing and naming handlers have been followed.
+
+   <?php                                                                      
+   $mi =& MIME::getInstance();                                                
+   $mi-<bindExtensionToType('hello', 'application/x-hellotrigger');           
+   $hf =& handlerFactory::getInstance();                                      
+   $hf-<registerHandler('application/x-hellotrigger',                         
+                        'helloHandler',                                       
+                        'lib_local/helloHandler.class.php');                  
+   ?>                                                                         
+
+   First we bind file extension hello to a fabricated mime type. The the mime
+   type is registered to be handled with helloHandler which is defined in
+   lib_local/helloHandler.class.php relative to the entrypoint. Now for
+   example request for file say.hello results to a page saying "Hello World!"
+   and your template neatly wrapped over it.
+
+   To learn more about the possibilities, read short interface descriptions
+   (see Section 5.3) and read sources.
+
+     ----------------------------------------------------------------------
+
+5.2. Your PHP scripts in henkari
+
+   In henkari php scripts work pretty much as one would expect. You have
+   henkari environment available, output of script ends up to page content
+   and so on. You only have to keep in mind that your php code is executed in
+   handle() function of phpHandler, and not in global namespace as it
+   normally would. This might change in future releases of php, so refer to
+   php documentation to see how include() works.
+
+     ----------------------------------------------------------------------
+
+5.3. Interfaces
+
+   This is short description of the interfaces of henkari core components.
+   Useful member functions and properties are described.
+
+     ----------------------------------------------------------------------
+
+  5.3.1. UI
+
+   Don't instantiate this class! Call UI::getInstance() to obtain an
+   instance. Remember to assign return value from getInstance() with referece
+   assignment operator "=&".
+
+   tpl
+
+           An instance of phplib Template class. Set template variables using
+           tpl->set_var($name, $value);.
+
+   labelMapper
+
+           An instance of henkariLabelMapper inherited from labelMapper. See
+           interface description of labelMapper.
+
+   responseData
+
+           Holds the actual data to be sent in response to the recieved
+           request. This becomes set only after handler recursion has been
+           done. You can't check "what the page would look like" from here.
+           If you want to bypass template system and all the nice features
+           included, you can do it by setting the result data you want to
+           this variable (and propably set headers too). asisHandler does
+           this. Check an example from lib/asisHandler.class.php.
+
+   setTemplate($template, $override=false)
+
+           Set page template. The first variable is the template (itself, not
+           filename). Template is set to be root template when no template
+           was previously se or $override is true. More about templates in
+           Section 4.2.
+
+   addHeader($h)
+
+           Adds a http header to response. Use this if your response is of
+           different type than text/html. See lib/asisHandler.class.php as an
+           example.
+
+   appendToPage($str, $var=false)
+
+           Appends given string to template variable. If no variable is given
+           content is used.
+
+   pageTitle($str, $append=false)
+
+           Sets page title to be given string. If $append is true string is
+           appended to variable, otherwise previous value is overriden.
+           pageTitle('My Title', true); is equivalent to appendToPage('My
+           Title', 'title');
+
+   isUndefined($variable)
+
+           Checks if template system contains variable of given name as
+           undefined variable. In here "undefined" means that there's
+           {varname} somewhere in template, page content, etc. but there's no
+           defined value corresponding to that variable.
+
+   appendTo[TOC,Path,Menu]($uri, $label)
+
+           Add an item to navigational elements, table of contents, path or
+           menu. Takes as parameters the address and visible text to be used
+           in links.
+
+     ----------------------------------------------------------------------
+
+  5.3.2. labelMapper
+
+   setLabel($key, $label)
+
+           Sets the label of a key.
+
+   getLabel($key)
+
+           Returns the label corresponding to a key. If a label for requested
+           key was explicitely set with setLabel() it's used. Otherwise label
+           is obtained from defaultLabel().
+
+   defaultLabel($key)
+
+           Returns a default label for given key.
+
+     ----------------------------------------------------------------------
+
+  5.3.3. handlerFactory
+
+   Don't instantiate this class! Call handlerFactory::getInstance() to obtain
+   an instance. Remember to assign return value from getInstance() with
+   referece assignment operator "=&".
+
+   registerHandler($mime, $classname, $classfile='')
+
+           Registers class of given name to be responsible of handling the
+           files of given type. If classfile is not explicitely given, the
+           default policy lib/[classname].class.php is assumed.
+
+   createHandler($root_uri, $filename, $patharray)
+
+           Instantiates a handler for $filename and returns a reference to
+           it. Remember to assign return value with referece assignment
+           operator "=&". Other parameters are needed for handler
+           instantiation. Read the description of abstractHandler interface
+           to learn more about them.
+
+     ----------------------------------------------------------------------
+
+  5.3.4. abstractHandler
+
+   patharray
+
+           Request path from handled file to requested file. Stored in an
+           array. For example random/path/file.html would be array("random",
+           "path", "file.html").
+
+   filename
+
+           Actual file (or directory) to be handled.
+
+   root_uri
+
+           Base for references created by this handler. In other words items
+           contained by the thing pointed by filename have root_uri as their
+           base web address.
+
+   isDirectory
+
+           True if handled file is a directory. Defaults to false.
+
+   tmpdir
+
+           A directory where temporary files and directories created by this
+           handler should be placed in.
+
+   createTmpDir()
+
+           Create a new temporary directory inside default temporary
+           directory and set tmpdir to point to this newly created directory.
+
+   removeTmpDir()
+
+           Remove temporary directory created with createTmpDir(). If no new
+           directory has been created this has no effect.
+
+   filecontents($file)
+
+           Returns the contents of given file. Return value is empty if file
+           doesn't exist or it cannot be read.
+
+   parseNested($page)
+
+           Parse includes on given page. Read more from Section 4.5.
+
+   writePathEntry($trailing_slash = false)
+
+           Appends handled file to navigational element {path} (see Section
+           4.4). Trailing slash is appeded to directories. Behavior of this
+           function can be controlled with $config->path->files configuration
+           option. It has three possible values: 'none' (no files are shown
+           in path) 'noindex' (index -files are hidden from path, default)
+           'all' (all files are shown in path). Directories are always shown.
+
+   handle()
+
+           Override this when you create your own handler.
+
+     ----------------------------------------------------------------------
+
+  5.3.5. MIME
+
+   Don't instantiate this class! Call MIME::getInstance() to obtain an
+   instance. Remember to assign return value from getInstance() with referece
+   assignment operator "=&".
+
+   generic_type
+
+           This mime type is returned when a mime type for file extension
+           with no bindings is requested.
+
+   getMimeTypeByFilename($filename)
+
+           Returns an educated guess on mimetype based on filename.
+
+   getMimeTypeByExtension($extension)
+
+           Returns an educated guess on mimetype based on file extension.
+
+   bindExtensionToType($ext, $type)
+
+           Binds the given file extension to given mime type.
+
+     ----------------------------------------------------------------------
+
+                                 A. Appendices
+
+                             A.1. License agreement
+
+   Henkari is free software; you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free
+   Software Foundation; either version 2 of the License, or (at your option)
+   any later version.
+
+   Henkari is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+   FOR A PARTICULAR PURPOSE. See the GNU General Public License (in
+   ./COPYING) for more details.
+
+   You should have received a copy of the GNU General Public License along
+   with this program; if not, write to the Free Software Foundation, Inc., 59
+   Temple Place, Suite 330, Boston, MA 02111-1307 USA

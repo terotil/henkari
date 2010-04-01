@@ -1,0 +1,41 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Main{title}</title>
+
+    <style type="text/css">
+      body { font-family: sans-serif; font-size: 12pt }
+      :link { color: black }
+      :hover { color: #808080 }
+      :active { color: #808080 }
+      :visited { color: #404040 }
+      .selectedTOCItem { font-weight: bold }
+    </style>
+
+  </head>
+
+  <body bgcolor="white">
+    <h1>Test site</h1>
+
+    <div style="width: 30em">
+    <table cellpadding="10px" cellspacing="10px" width="100%">
+      <tr><td style="background-color: #a0d0d0" colspan="2">{path}</td></tr>
+      <tr>
+	<td style="background-color: #a0a0ff" width="30%" valign="top">
+	  {TOC}
+	</td>
+	<td style="background-color: #a0ffa0" width="70%" valign="top">
+	<!-- begin page content -->
+
+{content}
+
+	<!-- end page content -->
+	</td>
+      </tr>
+      <tr><td style="background-color: #a0d0d0" colspan="2">{path}</td></tr>
+      <tr><td colspan="2">Updated: {date_modified} Footnote: {footnote}</td></tr>
+    </table>
+    </div>
+
+  </body>
+</html>

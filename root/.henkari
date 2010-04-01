@@ -1,0 +1,24 @@
+<?php
+
+// Get singleton instance of handlerFactory.
+$hf =& handlerFactory::getInstance();
+
+// Register handlers.  These reside in default location.  No need to
+// specify classfile.
+$hf->registerHandler('application/x-ejsc', 'ejscHandler');
+$hf->registerHandler('application/x-tar',  'tarHandler');
+$hf->registerHandler('application/gzip',   'gzipHandler');
+$hf->registerHandler('text/html',          'htmlHandler');
+$hf->registerHandler('application/x-httpd-php','phpHandler');
+
+// Get singleton instance of authFactory
+$af =& authFactory::getInstance();
+
+// Register class handling authentication
+$af->registerAuth('henkariAuth');
+
+// Add test user
+$au =& $af->getAuth();
+$au->addUser('test','test');
+
+?>

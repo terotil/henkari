@@ -1,0 +1,98 @@
+* Every class/handler/etc. defines it's language spesific strings (and
+  maybe default settings too) by introducing an object of name
+  $whateverclass_strings ($whatever_settings) and after defining,
+  $config->whatever or $strings->whatever is merged to it (allows
+  local redefinitions).  Language actually used is selected by
+  $config->lang.
+
+* handler for .index files.  .index parsing must be separated from dirHandler.
+
+* Don't do anyting special in handle(), just call my_own_handle().  Or
+  if you can call "handle()" of superclass, do that... or something
+  like that.  
+
+* Better organization of show-edit -functionality.  Maybe spesific
+  edit-handler?  Basic text-editing functionality and show-edit
+  dispatch to abstractHandler (and actual editor implementation to
+  concrete handler).
+
+* Some kind of (translatable) string or sprintf-format database for
+  all textual expressions.
+
+* find better template engine. Change to smarty... ?
+
+* Change caching to jpcache?
+
+* Move thingies from handlers producing web-pages to "abstract" superclass.
+
+* Doc up to date
+	- User authentication subsystem
+	- New features added since last documentation update
+	- Yet undocumented parameters and configuration entries
+	- skimpHtmlHandler
+
+* Possibility to use template driven toc/path/menu
+
+* Performance tests
+
+* external data hashes, test $_GET functionality, etc.
+
+* Support multiple languages.  How to do it?
+
+* Document TOC/menu pseudo property.  What happens inside 
+
+* path entries must be mapped with tweaked SELF too.  An other
+  possibility is to always try mapping with trailing slash too.  See
+  henkariTOC and labelMapper.
+
+* Command to forbid files must be added to .index -syntax.  Now
+  .henkari and .index are retrievable!  
+
+* Put the orderd of things done in dirHandler to doc.  Order of
+  .index, .henkari, so on is meaningfull.
+
+* pseudo -command needs reconsideration or third parameter.  "pseudo
+  address internalname" could be good.  It would then be most propably
+  combined with "map internalname visiblename".
+
+* Encode generated urls (but not slashes! and propably something else
+  too) with rawurlencode.  This the way weird names work out properly.
+
+* Provide a direct way to toggle nesting of templates.  For example
+  have "template (override|nest)" rule in .index and
+  $config->template->nest to provide global default.
+
+* Cascading stylesheets, link stylesheets of included pages and
+  include <style>'s to header
+
+* Possibility to register handlers to spesific filename/dirname
+
+* Document this implementation of "boxing" with hidden _dir, boxing
+  template, symlinks and followin .henkari in it.
+
+<?php
+global $config;
+$ui =& UI::getInstance();
+
+// Tämän tiedoston includaa dirHandler, joten tupsahdamme suoraan sen
+// sisään.  Template löytyy siis standardipaikasta.
+$templatefile = $this->filename . '/' . $config->templatefile;
+if ( file_exists($templatefile) ) {
+  // Jyrätään vanha template kokonaan (sitä tarkoitta tuo true)
+  $ui->setTemplate($this->filecontents($templatefile), true);
+}
+
+// Seuraavaksi hämätään juuriosoite, että generoidut linkit menevät
+// oikein.  Tarvitaan lista seuraavista askeleista mäpättynä oikeisiin
+// juuriosoitteisiin.
+$root_uri_map = array("/ajankohtaista" => "/yhd/maahinkainen");
+// Tuo tarkoittaa nyt sitä, että ajankohtaista sijaitsee oikeasti
+// /yhd/maahinkainen -polun alla, eikä tässä hakemistossa.
+
+// Katsotaan minne ollaan menossa ja mäpätään sen mukaan.
+if ( isset($root_uri_map[$nextroot]) ) {
+  $this->root_uri = $root_uri_map[$nextroot];
+}
+
+?>
+

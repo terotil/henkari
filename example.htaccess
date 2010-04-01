@@ -1,0 +1,19 @@
+RewriteEngine on
+
+# Fix trailing slash
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^(.+[^/])$ $1/ [R,L]
+
+# Hiding index.php from path.
+
+# Use this version with Apache 1.3.X
+RewriteBase /your/entrypoint
+RewriteCond $1 !^index\.php.*$
+RewriteRule ^(.*)$ index.php/$1
+
+# Use this version with Apache 2.X, since addresses like
+# /index.php/some/path/ produce "Object not found" even if index.php
+# is there.
+RewriteBase /your/entrypoint
+RewriteCond $1 !^index\.php.*$
+RewriteRule ^(.*)$ index.php?path=/$1
